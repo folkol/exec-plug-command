@@ -31,25 +31,25 @@ def download(plug, etag):
     """Downloads and extracts <plug> into a temp dir, and symlinks to it.
 
     N.b. Several requests might trigger the same download, but since os.rename
-    is atomic, at least on same POSIX filesystem, one of them will win and the
-    resulting symlink should point to an unspoiled plug.
+    is atomic -- at least within the same POSIX filesystem -- one of them will
+    persist and the resulting symlink should point to an unspoiled plug.
     """
-    print(f'Updating {plug}')
+    print(f'>>> Updating {plug}')
+
     previous_version = current_version(plug)
 
     tmpdir = tempfile.mkdtemp(dir='cache')
-
     archive = f'{tmpdir}/{plug}.zip'
     s3.download_file(BUCKET, f'{plug}.zip', archive)
     with zipfile.ZipFile(archive, "r") as f:
-        f.extractall(os.path.join(tmpdir, 'code/'))
+        f.extractall(os.path.join(tmpdir, 'code'))
 
     with open(os.path.join(tmpdir, 'etag'), 'w') as f:
         f.write(etag)
 
     link_name = os.path.basename(tmpdir)
     os.symlink(link_name, link_name + '.lnk')
-    os.rename(link_name + '.lnk', 'cache/' + plug)
+    os.rename(link_name + '.lnk', os.path.join('cache', plug))
 
     with contextlib.suppress(FileNotFoundError, TypeError):
         os.rmdir(previous_version)
@@ -70,7 +70,7 @@ async def exec(plug, command):
         stderr=asyncio.subprocess.PIPE,
     )
 
-    await proc.wait()
+    await proc.wait()  # Possible deadlock if the PIPE buffer is too small?
 
     if proc.returncode == 0:
         return await proc.stdout.read()
