@@ -4,6 +4,7 @@ import os
 import sys
 import tempfile
 import zipfile
+import shutil
 
 import boto3
 from quart import Quart
@@ -52,7 +53,7 @@ def download(plug, etag):
     os.rename(link_name + '.lnk', os.path.join('cache', plug))
 
     with contextlib.suppress(FileNotFoundError, TypeError):
-        os.rmdir(previous_version)
+        shutil.rmtree(os.path.join('cache', previous_version))
 
 
 @app.route('/exec/<plug>/<command>')
