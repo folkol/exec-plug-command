@@ -4,7 +4,6 @@ import os
 import sys
 import tempfile
 import zipfile
-import shutil
 
 import boto3
 from quart import Quart
@@ -22,12 +21,6 @@ def cached_etag(plug):
             return f.read()
 
 
-def current_version(plug):
-    """Returns the current version of <plug>, if any."""
-    with contextlib.suppress(FileNotFoundError):
-        return os.readlink(f'cache/{plug}')
-
-
 def download(plug, etag):
     """Downloads and extracts <plug> into a temp dir, and symlinks to it.
 
@@ -36,8 +29,6 @@ def download(plug, etag):
     persist and the resulting symlink should point to an unspoiled plug.
     """
     print(f'>>> Updating {plug}')
-
-    previous_version = current_version(plug)
 
     tmpdir = tempfile.mkdtemp(dir='cache')
     archive = f'{tmpdir}/{plug}.zip'
@@ -51,9 +42,6 @@ def download(plug, etag):
     link_name = os.path.basename(tmpdir)
     os.symlink(link_name, link_name + '.lnk')
     os.rename(link_name + '.lnk', os.path.join('cache', plug))
-
-    with contextlib.suppress(FileNotFoundError, TypeError):
-        shutil.rmtree(os.path.join('cache', previous_version))
 
 
 @app.route('/exec/<plug>/<command>')
